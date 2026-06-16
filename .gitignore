@@ -1,0 +1,12 @@
+# Python 暫存檔
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 虛擬環境
+venv/
+.venv/
+env/
+
+# Mac 系統檔
+.DS_Store

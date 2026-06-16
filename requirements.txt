@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+requests
+aiohttp
+plotly
+pybaseball
+scikit-learn
