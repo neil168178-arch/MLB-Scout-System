@@ -103,7 +103,7 @@ if not full_data.empty:
         button[data-baseweb="tab"] p {{ font-size: {f_size(st.session_state.font_size, 0.9)} !important; font-weight: bold; }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探數據系統 </h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
