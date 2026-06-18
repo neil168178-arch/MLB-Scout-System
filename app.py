@@ -519,7 +519,6 @@ if not full_data.empty:
                 if h2h_t1 != h2h_t2: col_m2.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.3)};'><b>{h2h_t2} - {m} ({METRIC_TW.get(m, m)})</b><br><span style='font-size:{f_size(st.session_state.font_size, 2.2)}; color:{c2}; font-weight:bold;'>{format_metric(v2, m)}</span> (評級: {get_relative_grade(data, m, v2, p_type)[0]})</div>", unsafe_allow_html=True)
                 st.divider()
 
-        # 🔥 核心升級：視覺化進階戰力條 (優勢方專屬顏色點亮、劣勢方灰階弱化)
         with tab_predict:
             st.markdown("### 📅 賽程預測中心與勝率推算")
             col_d, col_g = st.columns([1, 2])
@@ -644,15 +643,28 @@ if not full_data.empty:
                     )
                     st.markdown(bars_html, unsafe_allow_html=True)
                     
-                    reasoning = [f"⚾ **先發投手戰力**：{'主' if home_p_era < away_p_era else '客'}隊先發較佔優勢。"]
-                    reasoning.append(f"🏏 **打線破壞力**：{'主' if home_ops > away_ops else '客'}隊打線較具威脅。")
-                    reasoning.append(f"🔥 **球隊近況氣勢**：主隊勝率 {home_win_rate:.0f}% vs 客隊 {away_win_rate:.0f}%。")
-                    reasoning.append(f"🛡️ **牛棚疲勞度**：主隊牛棚消耗 {home_bp_pitches} 球 vs 客隊 {away_bp_pitches} 球。")
-                    if home_bp_pitches > 80: reasoning.append(f"⚠️ <span style='color:#FF4444;'>**疲勞警告**</span>：主隊牛棚可能過度疲勞！")
-                    if away_bp_pitches > 80: reasoning.append(f"⚠️ <span style='color:#FF4444;'>**疲勞警告**</span>：客隊牛棚可能過度疲勞！")
+                    # 🔥 進階動態文字輔助：讓球隊名稱與優劣勢帶有專屬色彩與標籤
+                    h_span = f"<span style='color:{home_t_color}; font-weight:900;'>{home_t}</span>"
+                    a_span = f"<span style='color:{away_t_color}; font-weight:900;'>{away_t}</span>"
                     
-                    with st.expander("🧠 點擊查看勝率預測邏輯", expanded=True):
-                        for r in reasoning: st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.1)}; margin-bottom:10px;'>{r}</div>", unsafe_allow_html=True)
+                    adv_str = "<span style='color:#00E676; font-weight:900; background-color:rgba(0,230,118,0.1); padding:2px 6px; border-radius:4px;'>佔優</span>"
+                    dis_str = "<span style='color:#FF5252; font-weight:900; background-color:rgba(255,82,82,0.1); padding:2px 6px; border-radius:4px;'>劣勢</span>"
+                    warn_str = "<span style='color:#FF5252; font-weight:900; animation: blink 1s infinite;'>疲勞警告</span>"
+
+                    p_adv = f"➔ {h_span} {adv_str}" if home_p_era < away_p_era else (f"➔ {a_span} {adv_str}" if away_p_era < home_p_era else "➔ 平分秋色")
+                    h_adv = f"➔ {h_span} {adv_str}" if home_ops > away_ops else (f"➔ {a_span} {adv_str}" if away_ops > home_ops else "➔ 平分秋色")
+                    f_adv = f"➔ {h_span} {adv_str}" if home_win_rate > away_win_rate else (f"➔ {a_span} {adv_str}" if away_win_rate > home_win_rate else "➔ 平分秋色")
+
+                    reasoning = [f"⚾ **先發投手戰力**：{h_span} (ERA {home_p_era:.2f}) vs {a_span} (ERA {away_p_era:.2f}) {p_adv}"]
+                    reasoning.append(f"🏏 **打線破壞力**：{h_span} (OPS {home_ops:.3f}) vs {a_span} (OPS {away_ops:.3f}) {h_adv}")
+                    reasoning.append(f"🔥 **球隊近況氣勢**：{h_span} (勝率 {home_win_rate:.0f}%) vs {a_span} (勝率 {away_win_rate:.0f}%) {f_adv}")
+                    reasoning.append(f"🛡️ **牛棚狀況評估**：{h_span} 近兩日消耗 {home_bp_pitches} 球 vs {a_span} 消耗 {away_bp_pitches} 球。")
+                    
+                    if home_bp_pitches > 80: reasoning.append(f"⚠️ **{warn_str}**：{h_span} 牛棚負荷過大，後援戰局處於 {dis_str}！")
+                    if away_bp_pitches > 80: reasoning.append(f"⚠️ **{warn_str}**：{a_span} 牛棚負荷過大，後援戰局處於 {dis_str}！")
+                    
+                    with st.expander("🧠 點擊查看詳細勝率預測邏輯與戰力解析", expanded=True):
+                        for r in reasoning: st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.1)}; margin-bottom:12px; line-height: 1.5;'>{r}</div>", unsafe_allow_html=True)
                     
                     st.markdown("---")
                     for title, t_color, hit_stats, pit_stats, pitcher, pitcher_id in [(f"⚔️ 上半局：{away_t} (客隊打線) VS {home_p} (主隊先發)", home_t_color, ah_stats, hp_stats, home_p, selected_game['home_pitcher_id']), (f"⚔️ 下半局：{home_t} (主隊打線) VS {away_p} (客隊先發)", away_t_color, hh_stats, ap_stats, away_p, selected_game['away_pitcher_id'])]:
