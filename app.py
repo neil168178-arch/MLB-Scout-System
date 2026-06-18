@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 # 導入分層模組
 from config import *
 
-# 🚀 完整修復：補齊所有 utils 的工具函數
+# 載入所有 utils 工具函數
 from utils import (
     format_metric, STYLER_FORMATS, f_size, get_team_color, 
     hex_to_rgba, highlight_elite_stats, style_grade, score_to_grade,
@@ -15,7 +15,7 @@ from utils import (
     get_team_logo_url, darken_color
 )
 
-# 🚀 完整修復：補齊所有 data_fetcher 的資料抓取函數
+# 載入所有 data_fetcher 的資料抓取函數
 from data_fetcher import (
     process_combined_data, fetch_player_gamelog, fetch_player_handedness,
     fetch_savant_platoon_splits, fetch_player_home_away_splits, fetch_player_career,
@@ -26,7 +26,7 @@ from data_fetcher import (
 )
 
 # 🌟 必須是第一個 Streamlit 指令
-st.set_page_config(layout="wide", page_title="MLB 球探系統")
+st.set_page_config(layout="wide", page_title="MLB 終極球探系統")
 
 # 初始化 session state 字體大小設定（防呆）
 if 'font_size' not in st.session_state: st.session_state.font_size = 15
@@ -103,7 +103,7 @@ if not full_data.empty:
         button[data-baseweb="tab"] p {{ font-size: {f_size(st.session_state.font_size, 0.9)} !important; font-weight: bold; }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;">⚾ MLB 球探數據系統 ⚾</h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -413,13 +413,20 @@ if not full_data.empty:
                     weekly_df = fetch_weekly_fantasy_ranking(p_type)
                     if not weekly_df.empty:
                         weekly_df['Position'] = weekly_df['Player'].map(full_data.set_index('Player')['Position'].to_dict()).fillna(weekly_df['Position'])
-                        col_w1, col_w2 = st.columns([1, 2])
+                        
+                        # 🔥 這裡為近 7 日 Fantasy 排行榜加入了 Fan_Pts 與 Avg_Pts 的高低排序篩選器！
+                        col_w1, col_w2, col_w3 = st.columns([1, 1, 1])
                         sel_week_pos = col_w1.selectbox("🛡️ 篩選本週守備位置", ["全部 (ALL)", "DH", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"] if p_type == '打者' else ["全部 (ALL)", "SP", "RP", "CL"], index=0, key="league_fan_week_pos")
+                        sort_week_metric = col_w2.selectbox("📊 選擇排序指標", ["Fan_Pts", "Avg_Pts"], index=0, key="league_fan_week_sort")
+                        sort_week_order = col_w3.radio("排序方式", ["由高到低", "由低到高"], index=0, horizontal=True, key="league_fan_week_order")
                         
                         if sel_week_pos != "全部 (ALL)": 
                             weekly_df = weekly_df[weekly_df['Position'].astype(str).apply(lambda x: sel_week_pos in [p.strip() for p in x.split(',')])]
                         
+                        # 執行排序邏輯
+                        weekly_df = weekly_df.sort_values(by=sort_week_metric, ascending=(sort_week_order == "由低到高")).reset_index(drop=True)
                         weekly_df.index += 1
+                        
                         styled_weekly = weekly_df.style.apply(lambda row: [f'color: black !important; font-weight: 900 !important; font-size: 1.15em;' if col in ['Fan_Pts', 'Avg_Pts'] else (f'color: {get_team_color(row["Team"])[0]} !important; font-weight: 900 !important;' if col in ['Player', 'Team', 'Position'] else '') for col in row.index], axis=1).format(STYLER_FORMATS).hide(axis='index')
                         st.markdown(f"<div class='table-scroll-container'>{styled_weekly.to_html()}</div>", unsafe_allow_html=True)
                     else: st.warning("⚠️ 查無近七日比賽資料。")
