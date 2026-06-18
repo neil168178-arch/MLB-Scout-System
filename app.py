@@ -103,7 +103,7 @@ if not full_data.empty:
         button[data-baseweb="tab"] p {{ font-size: {f_size(st.session_state.font_size, 0.9)} !important; font-weight: bold; }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 數據系統 </h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -414,7 +414,6 @@ if not full_data.empty:
                     if not weekly_df.empty:
                         weekly_df['Position'] = weekly_df['Player'].map(full_data.set_index('Player')['Position'].to_dict()).fillna(weekly_df['Position'])
                         
-                        # 🔥 這裡為近 7 日 Fantasy 排行榜加入了 Fan_Pts 與 Avg_Pts 的高低排序篩選器！
                         col_w1, col_w2, col_w3 = st.columns([1, 1, 1])
                         sel_week_pos = col_w1.selectbox("🛡️ 篩選本週守備位置", ["全部 (ALL)", "DH", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"] if p_type == '打者' else ["全部 (ALL)", "SP", "RP", "CL"], index=0, key="league_fan_week_pos")
                         sort_week_metric = col_w2.selectbox("📊 選擇排序指標", ["Fan_Pts", "Avg_Pts"], index=0, key="league_fan_week_sort")
@@ -423,7 +422,6 @@ if not full_data.empty:
                         if sel_week_pos != "全部 (ALL)": 
                             weekly_df = weekly_df[weekly_df['Position'].astype(str).apply(lambda x: sel_week_pos in [p.strip() for p in x.split(',')])]
                         
-                        # 執行排序邏輯
                         weekly_df = weekly_df.sort_values(by=sort_week_metric, ascending=(sort_week_order == "由低到高")).reset_index(drop=True)
                         weekly_df.index += 1
                         
@@ -521,6 +519,7 @@ if not full_data.empty:
                 if h2h_t1 != h2h_t2: col_m2.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.3)};'><b>{h2h_t2} - {m} ({METRIC_TW.get(m, m)})</b><br><span style='font-size:{f_size(st.session_state.font_size, 2.2)}; color:{c2}; font-weight:bold;'>{format_metric(v2, m)}</span> (評級: {get_relative_grade(data, m, v2, p_type)[0]})</div>", unsafe_allow_html=True)
                 st.divider()
 
+        # 🔥 核心升級：視覺化進階戰力條 (優勢方專屬顏色點亮、劣勢方灰階弱化)
         with tab_predict:
             st.markdown("### 📅 賽程預測中心與勝率推算")
             col_d, col_g = st.columns([1, 2])
@@ -556,6 +555,10 @@ if not full_data.empty:
                     away_p_era = float(ap_stats['ERA'].replace(0, pd.NA).mean() or 4.00) if not ap_stats.empty else 4.00
                     home_p_era = float(hp_stats['ERA'].replace(0, pd.NA).mean() or 4.00) if not hp_stats.empty else 4.00
                     
+                    # 計算球隊近況勝率
+                    away_win_rate = (away_form.count('W') / len(away_form)) * 100 if away_form else 50.0
+                    home_win_rate = (home_form.count('W') / len(home_form)) * 100 if home_form else 50.0
+
                     away_strength = (away_ops * 100) + (max(0, 5 - away_p_era) * 10 + (ap_stats['WAR'].sum() if not ap_stats.empty else 0.0) * 5) + (sum([1 if f=='W' else -1 for f in away_form]) * 1.5)
                     home_strength = (home_ops * 100) + (max(0, 5 - home_p_era) * 10 + (hp_stats['WAR'].sum() if not hp_stats.empty else 0.0) * 5) + 3.0 + (sum([1 if f=='W' else -1 for f in home_form]) * 1.5)
                     total_strength = away_strength + home_strength
@@ -564,17 +567,87 @@ if not full_data.empty:
                     st.subheader(f"🔮 {selected_game['matchup']} 戰力與勝率預測")
                     st.markdown(f'<div style="display: flex; justify-content: space-between; font-size: {f_size(st.session_state.font_size, 0.9)}; font-weight: bold; margin-bottom: 10px;"><div>客隊近況 (近5場): {" ".join(["<span style=\'background-color:#4CAF50; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>W</span>" if f == "W" else "<span style=\'background-color:#F44336; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>L</span>" for f in away_form]) if away_form else "無資料"}</div><div>主隊近況 (近5場): {" ".join(["<span style=\'background-color:#4CAF50; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>W</span>" if f == "W" else "<span style=\'background-color:#F44336; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>L</span>" for f in home_form]) if home_form else "無資料"}</div></div><div style="display: flex; height: 40px; border-radius: 8px; overflow: hidden; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="width: {away_win_prob}%; background-color: {away_t_color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: {f_size(st.session_state.font_size, 1.6)};">{away_t} {away_win_prob:.1f}%</div><div style="width: {home_win_prob}%; background-color: {home_t_color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: {f_size(st.session_state.font_size, 1.6)};">{home_t} {home_win_prob:.1f}%</div></div>', unsafe_allow_html=True)
                     
-                    def draw_comparison_bar(label, away_val, home_val, is_int=False):
-                        sum_val = away_val + home_val or 1
-                        fmt = "{:.0f}" if is_int else "{:.3f}" if "OPS" in label else "{:.2f}"
-                        return f'<div style="margin-bottom: 15px; padding: 10px; background-color: rgba(0,0,0,0.03); border-radius: 8px;"><div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: {f_size(st.session_state.font_size, 0.9)}; font-weight: bold;"><span style="color: {away_t_color}; text-shadow: 0px 0px 1px rgba(0,0,0,0.2);">{fmt.format(away_val)}</span><span>{label}</span><span style="color: {home_t_color}; text-shadow: 0px 0px 1px rgba(0,0,0,0.2);">{fmt.format(home_val)}</span></div><div style="display: flex; height: 12px; border-radius: 6px; overflow: hidden; background-color: #ddd;"><div style="width: {(away_val / sum_val) * 100}%; background-color: {away_t_color};"></div><div style="width: {100 - (away_val / sum_val) * 100}%; background-color: {home_t_color};"></div></div></div>'
+                    # 🔥 全新設計的進階戰力條 (動態判定優劣勢並上色)
+                    def draw_comparison_bar(label, away_val, home_val, is_int=False, lower_is_better=False, is_pct=False):
+                        if away_val is None or pd.isna(away_val): away_val = 0
+                        if home_val is None or pd.isna(home_val): home_val = 0
+                        
+                        away_val, home_val = float(away_val), float(home_val)
+                        
+                        # 判定優勢
+                        if away_val == home_val:
+                            away_adv, home_adv = False, False
+                        elif lower_is_better:
+                            away_adv, home_adv = away_val < home_val, home_val < away_val
+                        else:
+                            away_adv, home_adv = away_val > home_val, home_val > away_val
+                            
+                        # 設定進度條顏色：優勢方使用該隊主色，劣勢方變為灰色
+                        muted_color = "#E0E0E0"
+                        a_bar_color = away_t_color if away_adv else (muted_color if home_adv else away_t_color)
+                        h_bar_color = home_t_color if home_adv else (muted_color if away_adv else home_t_color)
+                        
+                        # 設定文字顏色同步區分優劣勢
+                        a_text_color = away_t_color if away_adv else ("#B0BEC5" if home_adv else "#555")
+                        h_text_color = home_t_color if home_adv else ("#B0BEC5" if away_adv else "#555")
+                        
+                        a_weight = "900" if away_adv else "500"
+                        h_weight = "900" if home_adv else "500"
+                        a_size = f_size(st.session_state.font_size, 1.25) if away_adv else f_size(st.session_state.font_size, 0.95)
+                        h_size = f_size(st.session_state.font_size, 1.25) if home_adv else f_size(st.session_state.font_size, 0.95)
+                        
+                        if is_pct: fmt = "{:.0f}%"
+                        elif is_int: fmt = "{:.0f}"
+                        else: fmt = "{:.3f}" if "OPS" in label else "{:.2f}"
+                            
+                        a_str, h_str = fmt.format(away_val), fmt.format(home_val)
+                        
+                        sum_val = away_val + home_val
+                        if sum_val == 0:
+                            a_pct, h_pct = 50, 50
+                        else:
+                            if lower_is_better:
+                                # 數值越低越好，所以把對方的值當作自己的長度比例
+                                a_pct = (home_val / sum_val) * 100
+                                h_pct = (away_val / sum_val) * 100
+                            else:
+                                a_pct = (away_val / sum_val) * 100
+                                h_pct = (home_val / sum_val) * 100
+                                
+                        if lower_is_better and sum_val > 0:
+                            if away_val == 0: a_pct, h_pct = 95, 5
+                            if home_val == 0: a_pct, h_pct = 5, 95
+                            
+                        a_icon = "🔥 " if away_adv else ""
+                        h_icon = " 🔥" if home_adv else ""
+                            
+                        return f'''
+                        <div style="margin-bottom: 16px; padding: 12px 15px; background-color: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #f0f0f0;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center;">
+                                <span style="color: {a_text_color}; font-weight: {a_weight}; font-size: {a_size}; transition: all 0.3s;">{a_icon}{a_str}</span>
+                                <span style="color: #333; font-weight: bold; font-size: {f_size(st.session_state.font_size, 0.95)}; text-align: center; flex: 1;">{label}</span>
+                                <span style="color: {h_text_color}; font-weight: {h_weight}; font-size: {h_size}; transition: all 0.3s;">{h_str}{h_icon}</span>
+                            </div>
+                            <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background-color: #f5f5f5;">
+                                <div style="width: {a_pct}%; background-color: {a_bar_color}; transition: all 0.5s;"></div>
+                                <div style="width: {h_pct}%; background-color: {h_bar_color}; transition: all 0.5s;"></div>
+                            </div>
+                        </div>
+                        '''
 
-                    st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.2)}; font-weight:bold; margin-bottom: 10px;'>⚖️ 核心戰力對比拔河 (Comparison)</div>", unsafe_allow_html=True)
-                    st.markdown(draw_comparison_bar(f"先發投手 ERA ({METRIC_TW.get('ERA')})", away_p_era, home_p_era) + draw_comparison_bar(f"打線整體 OPS ({METRIC_TW.get('OPS')})", away_ops, home_ops) + draw_comparison_bar("近兩日牛棚消耗球數 (疲勞度)", away_bp_pitches, home_bp_pitches, is_int=True), unsafe_allow_html=True)
+                    st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.2)}; font-weight:bold; margin-bottom: 15px; text-align:center;'>⚖️ 核心戰力對比拔河 (優勢方點亮專屬隊色)</div>", unsafe_allow_html=True)
+                    bars_html = (
+                        draw_comparison_bar(f"先發投手戰力指標 (本季 ERA)", away_p_era, home_p_era, lower_is_better=True) +
+                        draw_comparison_bar(f"打線破壞力指標 (本季 OPS)", away_ops, home_ops) +
+                        draw_comparison_bar("球隊近況氣勢 (近 5 場勝率)", away_win_rate, home_win_rate, is_pct=True) +
+                        draw_comparison_bar("牛棚疲勞度 (近 2 日消耗球數)", away_bp_pitches, home_bp_pitches, is_int=True, lower_is_better=True)
+                    )
+                    st.markdown(bars_html, unsafe_allow_html=True)
                     
-                    reasoning = [f"⚾ **先發投手優勢**：{'主' if home_p_era < away_p_era else '客'}隊先發 {'優' if home_p_era < away_p_era else '劣'}勢。"]
+                    reasoning = [f"⚾ **先發投手戰力**：{'主' if home_p_era < away_p_era else '客'}隊先發較佔優勢。"]
                     reasoning.append(f"🏏 **打線破壞力**：{'主' if home_ops > away_ops else '客'}隊打線較具威脅。")
-                    reasoning.append(f"🛡️ **牛棚戰力與疲勞度**：主隊牛棚消耗 {home_bp_pitches} 球 vs 客隊 {away_bp_pitches} 球。")
+                    reasoning.append(f"🔥 **球隊近況氣勢**：主隊勝率 {home_win_rate:.0f}% vs 客隊 {away_win_rate:.0f}%。")
+                    reasoning.append(f"🛡️ **牛棚疲勞度**：主隊牛棚消耗 {home_bp_pitches} 球 vs 客隊 {away_bp_pitches} 球。")
                     if home_bp_pitches > 80: reasoning.append(f"⚠️ <span style='color:#FF4444;'>**疲勞警告**</span>：主隊牛棚可能過度疲勞！")
                     if away_bp_pitches > 80: reasoning.append(f"⚠️ <span style='color:#FF4444;'>**疲勞警告**</span>：客隊牛棚可能過度疲勞！")
                     
