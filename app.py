@@ -101,6 +101,7 @@ if not full_data.empty:
         table.dataframe th, table.dataframe td {{ padding: 6px 12px; border: 1px solid #e0e0e0; text-align: center !important; white-space: nowrap; font-size: {f_size(st.session_state.table_font_size)} !important; }}
         table.dataframe thead th {{ background-color: {p_prof_color}; color: white !important; font-size: {f_size(st.session_state.table_font_size, 0.9)} !important; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4); }}
         button[data-baseweb="tab"] p {{ font-size: {f_size(st.session_state.font_size, 0.9)} !important; font-weight: bold; }}
+        @keyframes blink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
             <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
@@ -519,6 +520,7 @@ if not full_data.empty:
                 if h2h_t1 != h2h_t2: col_m2.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.3)};'><b>{h2h_t2} - {m} ({METRIC_TW.get(m, m)})</b><br><span style='font-size:{f_size(st.session_state.font_size, 2.2)}; color:{c2}; font-weight:bold;'>{format_metric(v2, m)}</span> (評級: {get_relative_grade(data, m, v2, p_type)[0]})</div>", unsafe_allow_html=True)
                 st.divider()
 
+        # 🔥 核心升級：視覺化進階戰力條 (涵蓋近況、優勢方專屬顏色點亮、劣勢方灰階弱化)
         with tab_predict:
             st.markdown("### 📅 賽程預測中心與勝率推算")
             col_d, col_g = st.columns([1, 2])
@@ -539,7 +541,7 @@ if not full_data.empty:
                 home_t_color, away_t_color = get_team_color(home_t)[0], get_team_color(away_t)[0]
                 if home_t_color == away_t_color: away_t_color = get_team_color(away_t)[1]
                 
-                with st.spinner("加載預測引擎數據與球隊近況..."):
+                with st.spinner("加載預測引擎數據、球隊近況與近期火力..."):
                     pred_hitters, pred_pitchers = process_combined_data("打者", year, 0), process_combined_data("投手", year, 0)
                     hp_stats, ap_stats = pred_pitchers[pred_pitchers['Player'] == home_p], pred_pitchers[pred_pitchers['Player'] == away_p]
                     hh_stats, ah_stats = pred_hitters[pred_hitters['Team'] == home_t], pred_hitters[pred_hitters['Team'] == away_t]
@@ -550,16 +552,47 @@ if not full_data.empty:
                     home_bp_pitches, away_bp_pitches = fetch_bullpen_usage(home_t, target_date.strftime("%Y-%m-%d")), fetch_bullpen_usage(away_t, target_date.strftime("%Y-%m-%d"))
                     away_form, home_form = fetch_team_recent_form(MLB_TEAM_IDS.get(away_t), target_date.strftime("%Y-%m-%d")), fetch_team_recent_form(MLB_TEAM_IDS.get(home_t), target_date.strftime("%Y-%m-%d"))
                     
+                    # 抓取球員本季基本數據
                     away_ops, home_ops = ah_stats['OPS'].mean() if not ah_stats.empty else 0.700, hh_stats['OPS'].mean() if not hh_stats.empty else 0.700
                     away_p_era = float(ap_stats['ERA'].replace(0, pd.NA).mean() or 4.00) if not ap_stats.empty else 4.00
                     home_p_era = float(hp_stats['ERA'].replace(0, pd.NA).mean() or 4.00) if not hp_stats.empty else 4.00
                     
+                    # 🌟 核心新增：計算先發投手「近 5 場」ERA
+                    def get_recent_pitcher_era(p_id):
+                        if not p_id: return None
+                        try:
+                            df = fetch_player_gamelog(int(p_id), "投手", year)
+                            if df is None or df.empty: return None
+                            r5 = df.head(5)
+                            if 'IP_calc' not in r5.columns or 'ER' not in r5.columns: return None
+                            ip = r5['IP_calc'].sum()
+                            er = r5['ER'].sum()
+                            return float(er * 9 / ip) if ip > 0 else None
+                        except Exception:
+                            return None
+                    
+                    home_p_recent_era_val = get_recent_pitcher_era(selected_game.get('home_pitcher_id'))
+                    away_p_recent_era_val = get_recent_pitcher_era(selected_game.get('away_pitcher_id'))
+                    home_p_recent_era = home_p_recent_era_val if home_p_recent_era_val is not None else home_p_era
+                    away_p_recent_era = away_p_recent_era_val if away_p_recent_era_val is not None else away_p_era
+
+                    # 🌟 核心新增：計算打線「近期 (近1週/14天)」OPS
+                    recent_hitters_df = fetch_recent_form_ranking("打者")
+                    if recent_hitters_df is not None and not recent_hitters_df.empty and 'OPS' in recent_hitters_df.columns:
+                        home_recent_ops_val = recent_hitters_df[recent_hitters_df['Team'] == home_t]['OPS'].mean()
+                        away_recent_ops_val = recent_hitters_df[recent_hitters_df['Team'] == away_t]['OPS'].mean()
+                        home_recent_ops = float(home_recent_ops_val) if pd.notna(home_recent_ops_val) else home_ops
+                        away_recent_ops = float(away_recent_ops_val) if pd.notna(away_recent_ops_val) else away_ops
+                    else:
+                        home_recent_ops, away_recent_ops = home_ops, away_ops
+
                     # 計算球隊近況勝率
                     away_win_rate = (away_form.count('W') / len(away_form)) * 100 if away_form else 50.0
                     home_win_rate = (home_form.count('W') / len(home_form)) * 100 if home_form else 50.0
 
-                    away_strength = (away_ops * 100) + (max(0, 5 - away_p_era) * 10 + (ap_stats['WAR'].sum() if not ap_stats.empty else 0.0) * 5) + (sum([1 if f=='W' else -1 for f in away_form]) * 1.5)
-                    home_strength = (home_ops * 100) + (max(0, 5 - home_p_era) * 10 + (hp_stats['WAR'].sum() if not hp_stats.empty else 0.0) * 5) + 3.0 + (sum([1 if f=='W' else -1 for f in home_form]) * 1.5)
+                    # 勝率預測演算法 (已結合最新近況數據權重)
+                    away_strength = (away_ops * 50 + away_recent_ops * 50) + (max(0, 5 - away_p_era) * 5 + max(0, 5 - away_p_recent_era) * 5 + (ap_stats['WAR'].sum() if not ap_stats.empty else 0.0) * 5) + (sum([1 if f=='W' else -1 for f in away_form]) * 1.5)
+                    home_strength = (home_ops * 50 + home_recent_ops * 50) + (max(0, 5 - home_p_era) * 5 + max(0, 5 - home_p_recent_era) * 5 + (hp_stats['WAR'].sum() if not hp_stats.empty else 0.0) * 5) + 3.0 + (sum([1 if f=='W' else -1 for f in home_form]) * 1.5)
                     total_strength = away_strength + home_strength
                     home_win_prob, away_win_prob = (50.0, 50.0) if total_strength == 0 else ((home_strength / total_strength) * 100, (away_strength / total_strength) * 100)
                     
@@ -635,9 +668,13 @@ if not full_data.empty:
                         '''
 
                     st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.2)}; font-weight:bold; margin-bottom: 15px; text-align:center;'>⚖️ 核心戰力對比拔河 (優勢方點亮專屬隊色)</div>", unsafe_allow_html=True)
+                    
+                    # 依序畫出 6 條進度條
                     bars_html = (
-                        draw_comparison_bar(f"先發投手戰力指標 (本季 ERA)", away_p_era, home_p_era, lower_is_better=True) +
-                        draw_comparison_bar(f"打線破壞力指標 (本季 OPS)", away_ops, home_ops) +
+                        draw_comparison_bar(f"先發投手本季指標 (ERA)", away_p_era, home_p_era, lower_is_better=True) +
+                        draw_comparison_bar(f"先發投手近況 (近 5 場 ERA)", away_p_recent_era, home_p_recent_era, lower_is_better=True) +
+                        draw_comparison_bar(f"打線本季破壞力 (OPS)", away_ops, home_ops) +
+                        draw_comparison_bar(f"打線近況火燙度 (近期 OPS)", away_recent_ops, home_recent_ops) +
                         draw_comparison_bar("球隊近況氣勢 (近 5 場勝率)", away_win_rate, home_win_rate, is_pct=True) +
                         draw_comparison_bar("牛棚疲勞度 (近 2 日消耗球數)", away_bp_pitches, home_bp_pitches, is_int=True, lower_is_better=True)
                     )
@@ -652,13 +689,17 @@ if not full_data.empty:
                     warn_str = "<span style='color:#FF5252; font-weight:900; animation: blink 1s infinite;'>疲勞警告</span>"
 
                     p_adv = f"➔ {h_span} {adv_str}" if home_p_era < away_p_era else (f"➔ {a_span} {adv_str}" if away_p_era < home_p_era else "➔ 平分秋色")
+                    pr_adv = f"➔ {h_span} {adv_str}" if home_p_recent_era < away_p_recent_era else (f"➔ {a_span} {adv_str}" if away_p_recent_era < home_p_recent_era else "➔ 平分秋色")
                     h_adv = f"➔ {h_span} {adv_str}" if home_ops > away_ops else (f"➔ {a_span} {adv_str}" if away_ops > home_ops else "➔ 平分秋色")
+                    hr_adv = f"➔ {h_span} {adv_str}" if home_recent_ops > away_recent_ops else (f"➔ {a_span} {adv_str}" if away_recent_ops > home_recent_ops else "➔ 平分秋色")
                     f_adv = f"➔ {h_span} {adv_str}" if home_win_rate > away_win_rate else (f"➔ {a_span} {adv_str}" if away_win_rate > home_win_rate else "➔ 平分秋色")
 
-                    reasoning = [f"⚾ **先發投手戰力**：{h_span} (ERA {home_p_era:.2f}) vs {a_span} (ERA {away_p_era:.2f}) {p_adv}"]
-                    reasoning.append(f"🏏 **打線破壞力**：{h_span} (OPS {home_ops:.3f}) vs {a_span} (OPS {away_ops:.3f}) {h_adv}")
-                    reasoning.append(f"🔥 **球隊近況氣勢**：{h_span} (勝率 {home_win_rate:.0f}%) vs {a_span} (勝率 {away_win_rate:.0f}%) {f_adv}")
-                    reasoning.append(f"🛡️ **牛棚狀況評估**：{h_span} 近兩日消耗 {home_bp_pitches} 球 vs {a_span} 消耗 {away_bp_pitches} 球。")
+                    reasoning = [f"⚾ **先發投手本季戰力**：{h_span} (ERA {home_p_era:.2f}) vs {a_span} (ERA {away_p_era:.2f}) {p_adv}"]
+                    reasoning.append(f"🎯 **先發投手近況 (近5場)**：{h_span} (ERA {home_p_recent_era:.2f}) vs {a_span} (ERA {away_p_recent_era:.2f}) {pr_adv}")
+                    reasoning.append(f"🏏 **打線本季破壞力**：{h_span} (OPS {home_ops:.3f}) vs {a_span} (OPS {away_ops:.3f}) {h_adv}")
+                    reasoning.append(f"🔥 **打線近況火燙度 (近期)**：{h_span} (OPS {home_recent_ops:.3f}) vs {a_span} (OPS {away_recent_ops:.3f}) {hr_adv}")
+                    reasoning.append(f"📈 **球隊近況氣勢 (近5場)**：{h_span} (勝率 {home_win_rate:.0f}%) vs {a_span} (勝率 {away_win_rate:.0f}%) {f_adv}")
+                    reasoning.append(f"🛡️ **牛棚狀況評估 (近2日)**：{h_span} 消耗 {home_bp_pitches} 球 vs {a_span} 消耗 {away_bp_pitches} 球。")
                     
                     if home_bp_pitches > 80: reasoning.append(f"⚠️ **{warn_str}**：{h_span} 牛棚負荷過大，後援戰局處於 {dis_str}！")
                     if away_bp_pitches > 80: reasoning.append(f"⚠️ **{warn_str}**：{a_span} 牛棚負荷過大，後援戰局處於 {dis_str}！")
