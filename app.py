@@ -7,12 +7,12 @@ from datetime import datetime, timezone, timedelta
 # 導入分層模組
 from config import *
 
-# 載入所有 utils 工具函數
+# 🔥 更新：載入剛剛寫好的 generate_fun_nickname 函數
 from utils import (
     format_metric, STYLER_FORMATS, f_size, get_team_color, 
     hex_to_rgba, highlight_elite_stats, style_grade, score_to_grade,
     get_percentile, get_relative_grade, generate_scout_conclusion,
-    get_team_logo_url, darken_color
+    get_team_logo_url, darken_color, generate_fun_nickname
 )
 
 # 載入所有 data_fetcher 的資料抓取函數
@@ -26,7 +26,7 @@ from data_fetcher import (
 )
 
 # 🌟 必須是第一個 Streamlit 指令
-st.set_page_config(layout="wide", page_title="MLB 球探系統")
+st.set_page_config(layout="wide", page_title="MLB 終極球探系統")
 
 # 初始化 session state 字體大小設定（防呆）
 if 'font_size' not in st.session_state: st.session_state.font_size = 15
@@ -104,7 +104,7 @@ if not full_data.empty:
         @keyframes blink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;">⚾ MLB 球探數據系統 ⚾</h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -118,9 +118,13 @@ if not full_data.empty:
         logo_url = get_team_logo_url(p_prof['Team'])
         hand_info = fetch_player_handedness(p_prof['Player_ID'])
         
+        # 🔥 核心更新：呼叫剛剛寫好的專屬外號生成器
+        fun_nickname = generate_fun_nickname(p_prof, p_type)
+        
         logo_html = f"<img src='{logo_url}' width='45' style='vertical-align: middle; margin-right: 12px;'>" if logo_url else ""
         
-        st.markdown(f"<h2 style='color:{p_prof_color}; border-bottom: 3px solid {p_prof_color}; padding-bottom: 10px; display: flex; align-items: center;'>{logo_html} <span> {target_profile} <span style='font-size:0.6em; color:{p_prof_secondary};'>({hand_info})</span> | {p_prof['Team']} - {p_prof['Position']}</span></h2>", unsafe_allow_html=True)
+        # 🔥 核心更新：在名字旁邊加上超顯眼的外號 Badge (徽章設計)
+        st.markdown(f"<h2 style='color:{p_prof_color}; border-bottom: 3px solid {p_prof_color}; padding-bottom: 10px; display: flex; align-items: center;'>{logo_html} <span> {target_profile} <span style='font-size:0.55em; background-color:{p_prof_color}; color:#FFFFFF; border: 1.5px solid {p_prof_secondary}; padding:4px 10px; border-radius:20px; margin-left:10px; vertical-align:middle; text-shadow:none;'>{fun_nickname}</span> <span style='font-size:0.6em; color:{p_prof_secondary}; margin-left:10px;'>({hand_info})</span> | {p_prof['Team']} - {p_prof['Position']}</span></h2>", unsafe_allow_html=True)
         
         st.markdown("### 📊 本賽季核心數據與最新動態 (Season Stats & Trends)")
         gamelog_df = fetch_player_gamelog(int(p_prof['Player_ID']), p_type, year)
@@ -209,13 +213,11 @@ if not full_data.empty:
             st.info(f"⚠️ {target_profile} 在近 7 天內沒有出賽紀錄。")
 
         st.markdown("---")
-        # 🚀 在計算與排列優劣勢數據時，完美過濾掉 CYC, SLAM, E 等欄位
         scout_metrics = [m for m in global_metrics if m not in ['CYC', 'SLAM', 'E']]
         prs = {m: get_percentile(full_data, m, p_prof[m], p_type) for m in scout_metrics}
         sorted_prs = sorted(prs.items(), key=lambda x: x[1], reverse=True)
         strengths = [item for item in sorted_prs if item[1] >= 75][:4]
         weaknesses = sorted([item for item in sorted_prs if item[1] <= 35][-4:], key=lambda x: x[1])
-        # 呼叫 utils 中的總結函數
         conclusion = generate_scout_conclusion(prs, p_prof, p_type) 
         
         st.markdown("### 🤖 深度球探報告")
@@ -268,7 +270,6 @@ if not full_data.empty:
                 
                 fig_career = px.line(career_df, x='Season', y=sel_career_metric, hover_data=['Team'], markers=True, color_discrete_sequence=[p_prof_color])
                 fig_career.update_traces(marker=dict(size=10, line=dict(color='white', width=2)), line=dict(width=3))
-                # 🚀 完美修復：將 use_container_width=True 改成 width="stretch"
                 fig_career.update_layout(margin=dict(t=20, b=20, l=20, r=20), height=450, xaxis_title="賽季 (Season)", yaxis_title=sel_career_metric, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_career, width="stretch", config={'scrollZoom': True})
             else: st.info("⚠️ 查無生涯逐年數據。")
@@ -348,7 +349,6 @@ if not full_data.empty:
     else:
         data = full_data.copy()
         
-        # 使用過濾後的指標計算評級防呆
         scout_metrics_l = [m for m in global_metrics if m not in ['CYC', 'SLAM', 'E']]
         data['綜合分數'] = [round(sum(get_relative_grade(data, m, row[m], p_type)[1] for m in scout_metrics_l)/len(scout_metrics_l), 3) for _, row in data.iterrows()]
         data = data.sort_values(by='綜合分數', ascending=False).reset_index(drop=True)
@@ -374,7 +374,6 @@ if not full_data.empty:
             sorted_data = data.sort_values(by=sort_metric, ascending=(sort_order == "由低到高")).reset_index(drop=True)
             sorted_data['同池排名'] = sorted_data.index + 1
             
-            # 🚀 排名表中的 Player, Team, Position 欄位自動染上主隊色
             def color_rank_rows(row):
                 team_color = get_team_color(row['Team'])[0]
                 return [f'color: {team_color} !important; font-weight: 900 !important;' if col in ['Player', 'Team', 'Position'] else '' for col in row.index]
@@ -487,7 +486,6 @@ if not full_data.empty:
                 fig = go.Figure()
                 fig.add_trace(go.Scatterpolar(r=res1, theta=selected_metrics, fill='toself', line_color=p1_color_rad, name=target1_rad))
                 if target1_rad != target2_rad: fig.add_trace(go.Scatterpolar(r=res2, theta=selected_metrics, fill='toself', line_color=p2_color_rad, name=target2_rad))
-                # 🚀 完美修復：將 use_container_width=True 改成 width="stretch"
                 fig.update_layout(polar=dict(radialaxis=dict(range=[0, 100])), showlegend=True, height=600, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig, width="stretch", config={'scrollZoom': True})
                 
@@ -514,7 +512,6 @@ if not full_data.empty:
             fig.add_scatter(x=[p1_rad[x_col]], y=[p1_rad[y_col]], mode='markers', marker=dict(size=22, color=p1_color_rad, symbol='star', line=dict(color='white', width=2)), name=target1_rad, showlegend=True)
             if target1_rad != target2_rad: fig.add_scatter(x=[p2_rad[x_col]], y=[p2_rad[y_col]], mode='markers', marker=dict(size=18, color=p2_color_rad, symbol='star', line=dict(color='white', width=1.5)), name=target2_rad, showlegend=True)
                 
-            # 🚀 完美修復：將 use_container_width=True 改成 width="stretch"
             fig.update_layout(height=650, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig, width="stretch", config={'scrollZoom': True})
 

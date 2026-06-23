@@ -10,14 +10,12 @@ def translate_injury(text):
         
     lower_text = text.lower().strip()
     
-    # 完美使用你的防呆邏輯
     invalid_texts = ['il', 'out', 'day-to-day', '7-day il', '10-day il', '15-day il', '60-day il', 'unknown', 'injured 7-day', 'injured 10-day', 'injured 15-day', 'injured 60-day']
     if lower_text in invalid_texts:
         return "未公開詳細傷勢"
     
     tw_parts = []
     
-    # 🔥 處理特殊/組合詞語 (優先判斷，避免被後面的單字拆散)
     if "tommy john" in lower_text: tw_parts.append("手肘韌帶置換手術")
     if "thoracic outlet syndrome" in lower_text: tw_parts.append("胸廓出口症候群")
     if "lumbar degenerative disk disease" in lower_text: tw_parts.append("腰椎間盤退化")
@@ -26,12 +24,10 @@ def translate_injury(text):
     if "plantar fasciitis" in lower_text: tw_parts.append("足底筋膜炎")
     if "lateral epicondylitis" in lower_text: tw_parts.append("網球肘(外上髁炎)")
     
-    # 如果已經匹配到大詞組，就不再往下匹配單一單字，避免重複疊加
     if not tw_parts:
         if "left" in lower_text: tw_parts.append("左")
         elif "right" in lower_text: tw_parts.append("右")
         
-        # 🔥 擴充後的身體部位掃描
         body_parts = ["shoulder", "elbow", "forearm", "wrist", "hand", "finger", "thumb", "lower back", "back", "neck", "oblique", "rib", "hip", "groin", "quad", "hamstring", "knee", "calf", "ankle", "foot", "toe", "achilles", "biceps", "triceps", "lat", "pectoral", "flexor", "tendon", "ligament", "meniscus", "ucl", "acl", "mcl", "labrum", "orbital", "peroneal", "radius", "hamate", "gracilis", "shin bone", "trapezius", "fibula", "metacarpal", "brachialis", "arm", "ac joint", "ulnar nerve", "intercostal", "lumbar", "disc"]
         
         for bp in body_parts:
@@ -39,7 +35,6 @@ def translate_injury(text):
                 tw_parts.append(INJURY_DICT.get(bp, ""))
                 break
                 
-        # 🔥 擴充後的症狀與處置掃描
         conditions = ["strain", "sprain", "fracture", "contusion", "inflammation", "soreness", "sore", "tightness", "fatigue", "blister", "concussion", "surgery", "impingement", "dislocation", "tear", "bone bruise", "illness", "covid", "viral", "reconstruction", "discomfort", "recovery", "injury", "tendinitis", "arthroscopy", "repair", "fasciitis", "subluxation", "loose bodies", "spasms", "stress reaction", "laceration", "syndrome", "herniation", "non-displaced", "pain", "epicondylitis", "hernia", "rehab"]
         
         for cond in conditions:
@@ -48,7 +43,6 @@ def translate_injury(text):
                 break
                 
     if tw_parts:
-        # 去除可能出現的空字串並組裝
         tw_meaning = "".join([p for p in tw_parts if p])
         return f"{text} ({tw_meaning})"
     
@@ -148,9 +142,54 @@ def get_relative_grade(df, col_name, val, p_type):
         if pct >= p: return g, s
     return 'F', 0
 
+# 🔥 防呆安全浮點數轉換
 def safe_float(val):
+    if pd.isna(val): return 0.0
     try: return float(val)
     except: return 0.0
+
+# 🔥 核心升級：根據數據產出好笑又貼切的「動態專屬外號」
+def generate_fun_nickname(p_prof, p_type):
+    try:
+        if p_type == '投手':
+            pos = str(p_prof.get('Position', ''))
+            w = safe_float(p_prof.get('W', 0))
+            l = safe_float(p_prof.get('L', 0))
+            era = safe_float(p_prof.get('ERA', 5.0))
+            hr = safe_float(p_prof.get('HR', 0))
+            sv = safe_float(p_prof.get('SV', 0))
+            whip = safe_float(p_prof.get('WHIP', 1.5))
+            k_pct = safe_float(p_prof.get('K%', 0))
+
+            if pos in ['RP', 'CL'] and w >= 4: return "勝投怪盜 🥷"
+            if era <= 3.5 and w <= 3 and l >= w: return "問天組組長 😭"
+            if sv >= 3 and whip >= 1.3: return "劇場總監 🍿"
+            if hr >= 12: return "煙火大盤商 🎆"
+            if w >= 6 and era >= 4.5: return "強運體質 🍀"
+            if k_pct >= 28.0: return "K博士 👨‍⚕️"
+            if era <= 2.5 and whip <= 1.0: return "無情上鎖機 🔒"
+            return "打卡公務員 💼"
+            
+        else: # 打者
+            hr = safe_float(p_prof.get('HR', 0))
+            sb = safe_float(p_prof.get('SB', 0))
+            avg = safe_float(p_prof.get('AVG', 0.250))
+            k_pct = safe_float(p_prof.get('K%', 0))
+            whiff = safe_float(p_prof.get('Whiff%', 0))
+            bb_pct = safe_float(p_prof.get('BB%', 0))
+            hbp = safe_float(p_prof.get('HBP', 0))
+
+            if hr >= 15 and sb >= 10 and avg >= 0.280: return "外星人 👽"
+            if hr >= 10 and avg <= 0.220: return "純粹盲砲 🙈"
+            if k_pct >= 30.0 or whiff >= 30.0: return "人體電風扇 🌀"
+            if bb_pct >= 12.0 and avg < 0.250: return "散步大師 🚶"
+            if hbp >= 5: return "萬磁王 🧲"
+            if sb >= 12: return "田徑隊 🏃‍♂️"
+            if hr <= 3 and avg >= 0.280: return "安打碰碰王 🏓"
+            if hr >= 15: return "無情轟炸機 💣"
+            return "氣氛大師 🎉"
+    except:
+        return "神秘客 ❓"
 
 def generate_scout_conclusion(prs, p_prof, p_type):
     idx = abs(hash(str(p_prof.get('Player', 'Unknown')))) 
@@ -185,11 +224,11 @@ def generate_scout_conclusion(prs, p_prof, p_type):
             s_pool = ["，能夠穩定吃下大量局數並為球隊鎖定勝局。", "，在關鍵時刻總是能用穩健的控球化解失分危機。", "，是投手陣容中極其倚重的核心主戰戰力。", "，其優異的投球型態能完美執行各種局數封鎖任務。"]
         elif overall >= 35:
             p_pool = ["稱職合格的", "功能型明確的", "穩打穩紮的", "中規中矩的", "四平八穩的"]
-            c_pool = ["中段輪值投手", "穩健的長中繼戰力", "任務型後援投手", "局數消化者"]
+            c_pool = ["中段輪值投手", "穩健的長中繼戰力", "任務型後援投手", "實用性高的大眾臉投手"]
             s_pool = ["，默默提供穩定的局數消化與局勢控制。", "，在特定的局數安排下能發揮極佳的拆彈效果。", "，表現穩定，是維繫整個投手群深度的重要基石。", "，能精準完成教練團交辦的基本投球工作。"]
         else:
-            p_pool = ["力求突破的", "手感調整中的", "尚在磨練的", "尋求控球穩定度的", "極具改造潛力的","力求轉型的","待開發的"]
-            c_pool = ["邊緣輪替投手", "成長期新秀投手", "長線戰力", "角色型投手"]
+            p_pool = ["力求突破的", "手感調整中的", "尚在磨練的", "尋求控球穩定度的", "極具改造潛力的"]
+            c_pool = ["邊緣輪替投手", "成長期新秀投手", "待開發的長線戰力", "力求轉型的角色型投手"]
             s_pool = ["，需要大幅提升進壘點的精準度與球威壓制力。", "，正處於適應最高殿堂打者強度的關鍵學期。", "，未來仍需透過更多實戰修正投球機制與配球策略。"]
 
     pref = p_pool[idx % len(p_pool)]
