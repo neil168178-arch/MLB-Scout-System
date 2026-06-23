@@ -26,7 +26,7 @@ from data_fetcher import (
 )
 
 # 🌟 必須是第一個 Streamlit 指令
-st.set_page_config(layout="wide", page_title="MLB 球探系統")
+st.set_page_config(layout="wide", page_title="MLB 終極球探系統")
 
 # 初始化 session state 字體大小設定（防呆）
 if 'font_size' not in st.session_state: st.session_state.font_size = 15
@@ -104,7 +104,7 @@ if not full_data.empty:
         @keyframes blink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;">⚾ MLB 球探數據系統 ⚾</h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -209,11 +209,14 @@ if not full_data.empty:
             st.info(f"⚠️ {target_profile} 在近 7 天內沒有出賽紀錄。")
 
         st.markdown("---")
-        prs = {m: get_percentile(full_data, m, p_prof[m], p_type) for m in global_metrics}
+        # 🚀 在計算與排列優劣勢數據時，完美過濾掉 CYC, SLAM, E 等欄位
+        scout_metrics = [m for m in global_metrics if m not in ['CYC', 'SLAM', 'E']]
+        prs = {m: get_percentile(full_data, m, p_prof[m], p_type) for m in scout_metrics}
         sorted_prs = sorted(prs.items(), key=lambda x: x[1], reverse=True)
         strengths = [item for item in sorted_prs if item[1] >= 75][:4]
         weaknesses = sorted([item for item in sorted_prs if item[1] <= 35][-4:], key=lambda x: x[1])
-        conclusion = generate_scout_conclusion(prs, p_prof, p_type)
+        # 呼叫 utils 中的總結函數 (待會將在此貼上更新的詞彙庫)
+        conclusion = generate_scout_conclusion(prs, p_prof, p_type) 
         
         st.markdown("### 🤖 深度球探報告")
         st.markdown("#### 🟢 優勢 (Strengths)")
@@ -344,7 +347,9 @@ if not full_data.empty:
     else:
         data = full_data.copy()
         
-        data['綜合分數'] = [round(sum(get_relative_grade(data, m, row[m], p_type)[1] for m in global_metrics)/len(global_metrics), 3) for _, row in data.iterrows()]
+        # 使用過濾後的指標計算評級防呆
+        scout_metrics_l = [m for m in global_metrics if m not in ['CYC', 'SLAM', 'E']]
+        data['綜合分數'] = [round(sum(get_relative_grade(data, m, row[m], p_type)[1] for m in scout_metrics_l)/len(scout_metrics_l), 3) for _, row in data.iterrows()]
         data = data.sort_values(by='綜合分數', ascending=False).reset_index(drop=True)
         data.insert(0, '同池排名', data.index + 1)
         data.insert(1, '綜合評級', data['綜合分數'].apply(score_to_grade))
@@ -368,7 +373,15 @@ if not full_data.empty:
             sorted_data = data.sort_values(by=sort_metric, ascending=(sort_order == "由低到高")).reset_index(drop=True)
             sorted_data['同池排名'] = sorted_data.index + 1
             
-            styled_df = sorted_data.drop(columns=['Player_ID'], errors='ignore').style.apply(lambda x: [highlight_elite_stats(v, x.name, p_type) for v in x], axis=0).map(style_grade, subset=['綜合評級']).format(STYLER_FORMATS).hide(axis='index')
+            # 🚀 排名表中的 Player, Team, Position 欄位自動染上主隊色
+            def color_rank_rows(row):
+                team_color = get_team_color(row['Team'])[0]
+                return [f'color: {team_color} !important; font-weight: 900 !important;' if col in ['Player', 'Team', 'Position'] else '' for col in row.index]
+
+            styled_df = sorted_data.drop(columns=['Player_ID'], errors='ignore').style\
+                .apply(lambda x: [highlight_elite_stats(v, x.name, p_type) for v in x], axis=0)\
+                .apply(color_rank_rows, axis=1)\
+                .map(style_grade, subset=['綜合評級']).format(STYLER_FORMATS).hide(axis='index')
             st.markdown(f"<div class='table-scroll-container'>{styled_df.to_html()}</div>", unsafe_allow_html=True)
             
         with tab_recent:
@@ -520,7 +533,6 @@ if not full_data.empty:
                 if h2h_t1 != h2h_t2: col_m2.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.3)};'><b>{h2h_t2} - {m} ({METRIC_TW.get(m, m)})</b><br><span style='font-size:{f_size(st.session_state.font_size, 2.2)}; color:{c2}; font-weight:bold;'>{format_metric(v2, m)}</span> (評級: {get_relative_grade(data, m, v2, p_type)[0]})</div>", unsafe_allow_html=True)
                 st.divider()
 
-        # 🔥 核心升級：視覺化進階戰力條 (涵蓋近況、優勢方專屬顏色點亮、劣勢方灰階弱化)
         with tab_predict:
             st.markdown("### 📅 賽程預測中心與勝率推算")
             col_d, col_g = st.columns([1, 2])
@@ -552,12 +564,10 @@ if not full_data.empty:
                     home_bp_pitches, away_bp_pitches = fetch_bullpen_usage(home_t, target_date.strftime("%Y-%m-%d")), fetch_bullpen_usage(away_t, target_date.strftime("%Y-%m-%d"))
                     away_form, home_form = fetch_team_recent_form(MLB_TEAM_IDS.get(away_t), target_date.strftime("%Y-%m-%d")), fetch_team_recent_form(MLB_TEAM_IDS.get(home_t), target_date.strftime("%Y-%m-%d"))
                     
-                    # 抓取球員本季基本數據
                     away_ops, home_ops = ah_stats['OPS'].mean() if not ah_stats.empty else 0.700, hh_stats['OPS'].mean() if not hh_stats.empty else 0.700
                     away_p_era = float(ap_stats['ERA'].replace(0, pd.NA).mean() or 4.00) if not ap_stats.empty else 4.00
                     home_p_era = float(hp_stats['ERA'].replace(0, pd.NA).mean() or 4.00) if not hp_stats.empty else 4.00
                     
-                    # 🌟 核心新增：計算先發投手「近 5 場」ERA
                     def get_recent_pitcher_era(p_id):
                         if not p_id: return None
                         try:
@@ -576,7 +586,6 @@ if not full_data.empty:
                     home_p_recent_era = home_p_recent_era_val if home_p_recent_era_val is not None else home_p_era
                     away_p_recent_era = away_p_recent_era_val if away_p_recent_era_val is not None else away_p_era
 
-                    # 🌟 核心新增：計算打線「近期 (近1週/14天)」OPS
                     recent_hitters_df = fetch_recent_form_ranking("打者")
                     if recent_hitters_df is not None and not recent_hitters_df.empty and 'OPS' in recent_hitters_df.columns:
                         home_recent_ops_val = recent_hitters_df[recent_hitters_df['Team'] == home_t]['OPS'].mean()
@@ -586,11 +595,9 @@ if not full_data.empty:
                     else:
                         home_recent_ops, away_recent_ops = home_ops, away_ops
 
-                    # 計算球隊近況勝率
                     away_win_rate = (away_form.count('W') / len(away_form)) * 100 if away_form else 50.0
                     home_win_rate = (home_form.count('W') / len(home_form)) * 100 if home_form else 50.0
 
-                    # 勝率預測演算法 (已結合最新近況數據權重)
                     away_strength = (away_ops * 50 + away_recent_ops * 50) + (max(0, 5 - away_p_era) * 5 + max(0, 5 - away_p_recent_era) * 5 + (ap_stats['WAR'].sum() if not ap_stats.empty else 0.0) * 5) + (sum([1 if f=='W' else -1 for f in away_form]) * 1.5)
                     home_strength = (home_ops * 50 + home_recent_ops * 50) + (max(0, 5 - home_p_era) * 5 + max(0, 5 - home_p_recent_era) * 5 + (hp_stats['WAR'].sum() if not hp_stats.empty else 0.0) * 5) + 3.0 + (sum([1 if f=='W' else -1 for f in home_form]) * 1.5)
                     total_strength = away_strength + home_strength
@@ -599,14 +606,12 @@ if not full_data.empty:
                     st.subheader(f"🔮 {selected_game['matchup']} 戰力與勝率預測")
                     st.markdown(f'<div style="display: flex; justify-content: space-between; font-size: {f_size(st.session_state.font_size, 0.9)}; font-weight: bold; margin-bottom: 10px;"><div>客隊近況 (近5場): {" ".join(["<span style=\'background-color:#4CAF50; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>W</span>" if f == "W" else "<span style=\'background-color:#F44336; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>L</span>" for f in away_form]) if away_form else "無資料"}</div><div>主隊近況 (近5場): {" ".join(["<span style=\'background-color:#4CAF50; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>W</span>" if f == "W" else "<span style=\'background-color:#F44336; color:white; padding:2px 6px; border-radius:4px; font-size:0.85em; font-weight:bold;\'>L</span>" for f in home_form]) if home_form else "無資料"}</div></div><div style="display: flex; height: 40px; border-radius: 8px; overflow: hidden; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="width: {away_win_prob}%; background-color: {away_t_color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: {f_size(st.session_state.font_size, 1.6)};">{away_t} {away_win_prob:.1f}%</div><div style="width: {home_win_prob}%; background-color: {home_t_color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: {f_size(st.session_state.font_size, 1.6)};">{home_t} {home_win_prob:.1f}%</div></div>', unsafe_allow_html=True)
                     
-                    # 🔥 全新設計的進階戰力條 (動態判定優劣勢並上色)
                     def draw_comparison_bar(label, away_val, home_val, is_int=False, lower_is_better=False, is_pct=False):
                         if away_val is None or pd.isna(away_val): away_val = 0
                         if home_val is None or pd.isna(home_val): home_val = 0
                         
                         away_val, home_val = float(away_val), float(home_val)
                         
-                        # 判定優勢
                         if away_val == home_val:
                             away_adv, home_adv = False, False
                         elif lower_is_better:
@@ -614,12 +619,10 @@ if not full_data.empty:
                         else:
                             away_adv, home_adv = away_val > home_val, home_val > away_val
                             
-                        # 設定進度條顏色：優勢方使用該隊主色，劣勢方變為灰色
                         muted_color = "#E0E0E0"
                         a_bar_color = away_t_color if away_adv else (muted_color if home_adv else away_t_color)
                         h_bar_color = home_t_color if home_adv else (muted_color if away_adv else home_t_color)
                         
-                        # 設定文字顏色同步區分優劣勢
                         a_text_color = away_t_color if away_adv else ("#B0BEC5" if home_adv else "#555")
                         h_text_color = home_t_color if home_adv else ("#B0BEC5" if away_adv else "#555")
                         
@@ -639,7 +642,6 @@ if not full_data.empty:
                             a_pct, h_pct = 50, 50
                         else:
                             if lower_is_better:
-                                # 數值越低越好，所以把對方的值當作自己的長度比例
                                 a_pct = (home_val / sum_val) * 100
                                 h_pct = (away_val / sum_val) * 100
                             else:
@@ -669,7 +671,6 @@ if not full_data.empty:
 
                     st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.2)}; font-weight:bold; margin-bottom: 15px; text-align:center;'>⚖️ 核心戰力對比拔河 (優勢方點亮專屬隊色)</div>", unsafe_allow_html=True)
                     
-                    # 依序畫出 6 條進度條
                     bars_html = (
                         draw_comparison_bar(f"先發投手本季指標 (ERA)", away_p_era, home_p_era, lower_is_better=True) +
                         draw_comparison_bar(f"先發投手近況 (近 5 場 ERA)", away_p_recent_era, home_p_recent_era, lower_is_better=True) +
@@ -680,7 +681,6 @@ if not full_data.empty:
                     )
                     st.markdown(bars_html, unsafe_allow_html=True)
                     
-                    # 🔥 進階動態文字輔助：讓球隊名稱與優劣勢帶有專屬色彩與標籤
                     h_span = f"<span style='color:{home_t_color}; font-weight:900;'>{home_t}</span>"
                     a_span = f"<span style='color:{away_t_color}; font-weight:900;'>{away_t}</span>"
                     
