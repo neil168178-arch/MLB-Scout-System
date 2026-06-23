@@ -26,7 +26,7 @@ from data_fetcher import (
 )
 
 # 🌟 必須是第一個 Streamlit 指令
-st.set_page_config(layout="wide", page_title="MLB 終極球探系統")
+st.set_page_config(layout="wide", page_title="MLB 球探系統")
 
 # 初始化 session state 字體大小設定（防呆）
 if 'font_size' not in st.session_state: st.session_state.font_size = 15
@@ -104,7 +104,7 @@ if not full_data.empty:
         @keyframes blink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;">⚾ MLB 球探數據系統 ⚾</h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探數據系統 </h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
