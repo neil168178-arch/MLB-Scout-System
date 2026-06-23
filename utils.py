@@ -17,26 +17,39 @@ def translate_injury(text):
     
     tw_parts = []
     
-    if "tommy john" in lower_text:
-        tw_parts.append("手肘韌帶置換手術")
-    else:
+    # 🔥 處理特殊/組合詞語 (優先判斷，避免被後面的單字拆散)
+    if "tommy john" in lower_text: tw_parts.append("手肘韌帶置換手術")
+    if "thoracic outlet syndrome" in lower_text: tw_parts.append("胸廓出口症候群")
+    if "lumbar degenerative disk disease" in lower_text: tw_parts.append("腰椎間盤退化")
+    if "lumbar bulging disc" in lower_text: tw_parts.append("腰椎間盤膨出")
+    if "lumbar spine disc herniation" in lower_text: tw_parts.append("腰椎間盤突出")
+    if "plantar fasciitis" in lower_text: tw_parts.append("足底筋膜炎")
+    if "lateral epicondylitis" in lower_text: tw_parts.append("網球肘(外上髁炎)")
+    
+    # 如果已經匹配到大詞組，就不再往下匹配單一單字，避免重複疊加
+    if not tw_parts:
         if "left" in lower_text: tw_parts.append("左")
         elif "right" in lower_text: tw_parts.append("右")
         
-        body_parts = ["shoulder", "elbow", "forearm", "wrist", "hand", "finger", "thumb", "lower back", "back", "neck", "oblique", "rib", "hip", "groin", "quad", "hamstring", "knee", "calf", "ankle", "foot", "toe", "achilles", "biceps", "triceps", "lat", "pectoral", "flexor", "tendon", "ligament", "meniscus", "ucl", "acl", "mcl", "labrum"]
+        # 🔥 擴充後的身體部位掃描
+        body_parts = ["shoulder", "elbow", "forearm", "wrist", "hand", "finger", "thumb", "lower back", "back", "neck", "oblique", "rib", "hip", "groin", "quad", "hamstring", "knee", "calf", "ankle", "foot", "toe", "achilles", "biceps", "triceps", "lat", "pectoral", "flexor", "tendon", "ligament", "meniscus", "ucl", "acl", "mcl", "labrum", "orbital", "peroneal", "radius", "hamate", "gracilis", "shin bone", "trapezius", "fibula", "metacarpal", "brachialis", "arm", "ac joint", "ulnar nerve", "intercostal", "lumbar", "disc"]
+        
         for bp in body_parts:
             if bp in lower_text:
-                tw_parts.append(INJURY_DICT[bp])
+                tw_parts.append(INJURY_DICT.get(bp, ""))
                 break
                 
-        conditions = ["strain", "sprain", "fracture", "contusion", "inflammation", "soreness", "sore", "tightness", "fatigue", "blister", "concussion", "surgery", "impingement", "dislocation", "tear", "bone bruise", "illness", "covid", "viral"]
+        # 🔥 擴充後的症狀與處置掃描
+        conditions = ["strain", "sprain", "fracture", "contusion", "inflammation", "soreness", "sore", "tightness", "fatigue", "blister", "concussion", "surgery", "impingement", "dislocation", "tear", "bone bruise", "illness", "covid", "viral", "reconstruction", "discomfort", "recovery", "injury", "tendinitis", "arthroscopy", "repair", "fasciitis", "subluxation", "loose bodies", "spasms", "stress reaction", "laceration", "syndrome", "herniation", "non-displaced", "pain", "epicondylitis", "hernia", "rehab"]
+        
         for cond in conditions:
             if cond in lower_text:
-                tw_parts.append(INJURY_DICT[cond])
+                tw_parts.append(INJURY_DICT.get(cond, ""))
                 break
                 
     if tw_parts:
-        tw_meaning = "".join(tw_parts)
+        # 去除可能出現的空字串並組裝
+        tw_meaning = "".join([p for p in tw_parts if p])
         return f"{text} ({tw_meaning})"
     
     return text
@@ -139,16 +152,13 @@ def safe_float(val):
     try: return float(val)
     except: return 0.0
 
-# 🔥 核心升級：300+ 種詞彙量、精準 AI 總結定位矩陣 (已替換為霸氣的「王牌殺手」與「王牌粉碎機」)
 def generate_scout_conclusion(prs, p_prof, p_type):
-    # 使用球員姓名雜湊值作為隨機數種子，確保同一位球員每次得到的形容詞組合都是固定專屬的
     idx = abs(hash(str(p_prof.get('Player', 'Unknown')))) 
     overall = prs.get('WAR', 50)
     
     if p_type == '打者':
         if overall >= 85:
             p_pool = ["聯盟頂級且、", "MVP大熱門級別的", "具備統治全場實力的", "技術近乎無懈可擊的", "全明星先發等級的", "教科書般精湛的", "令對方投手聞風喪膽的", "具備史詩級破壞力的", "球隊絕對基石型的", "無可取代的頂尖"]
-            # ⚾ 替換成你喜歡的霸氣詞彙！
             c_pool = ["全能型超級巨星", "打擊線核心靈魂", "純粹的安打製造機器", "現代棒球終極進攻核武", "五拍子天選大物", "王牌殺手", "王牌粉碎機", "超級六角星全才打者"]
             s_pool = ["，正以現象級的演出主宰著整個賽季。", "，是任何先發輪值都不想面對的終極噩夢。", "，完美展現了豪門身價與令人驚嘆的破壞力。", "，其強悍火網能徹底摧毀對手的任何防守戰術部署。"]
         elif overall >= 60:
