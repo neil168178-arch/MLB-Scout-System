@@ -26,7 +26,7 @@ from data_fetcher import (
 )
 
 # 🌟 必須是第一個 Streamlit 指令
-st.set_page_config(layout="wide", page_title="MLB 球探系統")
+st.set_page_config(layout="wide", page_title="MLB 終極球探系統")
 
 # 初始化 session state 字體大小設定（防呆）
 if 'font_size' not in st.session_state: st.session_state.font_size = 15
@@ -104,7 +104,7 @@ if not full_data.empty:
         @keyframes blink {{ 0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }} }}
         </style>
         <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;"> MLB 球探系統 </h1>
+            <h1 style="color: {p_prof_color}; text-shadow: 1px 1px 3px rgba(0,0,0,0.15); font-weight: 900; margin: 0; padding: 0;">⚾ MLB 球探數據系統 ⚾</h1>
             <div style="width: 120px; height: 5px; background-color: {p_prof_secondary}; margin: 10px auto; border-radius: 3px; box-shadow: 0px 1px 2px rgba(0,0,0,0.2);"></div>
         </div>
     """, unsafe_allow_html=True)
@@ -215,7 +215,7 @@ if not full_data.empty:
         sorted_prs = sorted(prs.items(), key=lambda x: x[1], reverse=True)
         strengths = [item for item in sorted_prs if item[1] >= 75][:4]
         weaknesses = sorted([item for item in sorted_prs if item[1] <= 35][-4:], key=lambda x: x[1])
-        # 呼叫 utils 中的總結函數 (待會將在此貼上更新的詞彙庫)
+        # 呼叫 utils 中的總結函數
         conclusion = generate_scout_conclusion(prs, p_prof, p_type) 
         
         st.markdown("### 🤖 深度球探報告")
@@ -268,8 +268,9 @@ if not full_data.empty:
                 
                 fig_career = px.line(career_df, x='Season', y=sel_career_metric, hover_data=['Team'], markers=True, color_discrete_sequence=[p_prof_color])
                 fig_career.update_traces(marker=dict(size=10, line=dict(color='white', width=2)), line=dict(width=3))
+                # 🚀 完美修復：將 use_container_width=True 改成 width="stretch"
                 fig_career.update_layout(margin=dict(t=20, b=20, l=20, r=20), height=450, xaxis_title="賽季 (Season)", yaxis_title=sel_career_metric, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig_career, use_container_width=True, config={'scrollZoom': True})
+                st.plotly_chart(fig_career, width="stretch", config={'scrollZoom': True})
             else: st.info("⚠️ 查無生涯逐年數據。")
 
 # ==========================================
@@ -486,8 +487,9 @@ if not full_data.empty:
                 fig = go.Figure()
                 fig.add_trace(go.Scatterpolar(r=res1, theta=selected_metrics, fill='toself', line_color=p1_color_rad, name=target1_rad))
                 if target1_rad != target2_rad: fig.add_trace(go.Scatterpolar(r=res2, theta=selected_metrics, fill='toself', line_color=p2_color_rad, name=target2_rad))
+                # 🚀 完美修復：將 use_container_width=True 改成 width="stretch"
                 fig.update_layout(polar=dict(radialaxis=dict(range=[0, 100])), showlegend=True, height=600, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True})
+                st.plotly_chart(fig, width="stretch", config={'scrollZoom': True})
                 
                 st.markdown("### 📊 指標詳細 PR 值對比")
                 stat_cols = st.columns(4)
@@ -512,8 +514,9 @@ if not full_data.empty:
             fig.add_scatter(x=[p1_rad[x_col]], y=[p1_rad[y_col]], mode='markers', marker=dict(size=22, color=p1_color_rad, symbol='star', line=dict(color='white', width=2)), name=target1_rad, showlegend=True)
             if target1_rad != target2_rad: fig.add_scatter(x=[p2_rad[x_col]], y=[p2_rad[y_col]], mode='markers', marker=dict(size=18, color=p2_color_rad, symbol='star', line=dict(color='white', width=1.5)), name=target2_rad, showlegend=True)
                 
+            # 🚀 完美修復：將 use_container_width=True 改成 width="stretch"
             fig.update_layout(height=650, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True})
+            st.plotly_chart(fig, width="stretch", config={'scrollZoom': True})
 
         with tab_h2h:
             st.markdown("### ⚔️ 選擇對決比較目標")
