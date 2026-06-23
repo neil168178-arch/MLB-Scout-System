@@ -58,7 +58,23 @@ INJURY_DICT = {
     "inflammation": "發炎", "soreness": "痠痛", "sore": "痠痛", "tightness": "緊繃", 
     "fatigue": "疲勞", "blister": "水泡", "concussion": "腦震盪", "surgery": "手術",
     "impingement": "夾擠症", "dislocation": "脫臼", "tear": "撕裂", "bone bruise": "骨挫傷",
-    "illness": "生病", "covid": "新冠肺炎", "viral": "病毒感染"
+    "illness": "生病", "covid": "新冠肺炎", "viral": "病毒感染",
+    
+    # 🔥 --- 以下為全新加入的進階與專業傷勢/處置翻譯 ---
+    "reconstruction": "重建手術", "discomfort": "不適", "recovery": "復原中", 
+    "recovery from": "復原中", "injury": "受傷", "tendinitis": "肌腱炎", 
+    "arthroscopy": "關節鏡手術", "orbital": "眼眶", "peroneal": "腓骨", 
+    "radius": "橈骨", "repair": "修復手術", "plantar": "足底", "fasciitis": "筋膜炎", 
+    "hamate": "鉤骨", "subluxation": "半脫位", "loose bodies": "游離體", 
+    "spasms": "痙攣", "gracilis": "股薄肌", "shin bone": "脛骨", 
+    "stress reaction": "壓力性反應", "laceration": "撕裂傷", "trapezius": "斜方肌", 
+    "thoracic outlet": "胸廓出口", "syndrome": "症候群", "fibula": "腓骨", 
+    "lumbar spine": "腰椎", "lumbar": "腰部", "disc": "椎間盤", "herniation": "突出", 
+    "metacarpal": "掌骨", "non-displaced": "無移位", "brachialis": "肱肌", 
+    "arm": "手臂", "pain": "疼痛", "epicondylitis": "上髁炎", "hernia": "疝氣", 
+    "intercostal": "肋間肌", "rehab": "復健中", "ulnar nerve": "尺神經", 
+    "ac joint": "肩鎖關節", "bulging disc": "椎間盤膨出", 
+    "degenerative disk disease": "椎間盤退化"
 }
 
 METRIC_FORMATS = {
