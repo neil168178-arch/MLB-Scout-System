@@ -373,8 +373,8 @@ if not full_data.empty:
         scout_metrics_l = [m for m in global_metrics if m not in ['CYC', 'SLAM', 'E']]
         data['綜合分數'] = [round(sum(get_relative_grade(data, m, row[m], p_type)[1] for m in scout_metrics_l)/len(scout_metrics_l), 3) for _, row in data.iterrows()]
         data = data.sort_values(by='綜合分數', ascending=False).reset_index(drop=True)
-        data.insert(0, '同池排名', data.index + 1)
-        data.insert(1, '綜合評級', data['綜合分數'].apply(score_to_grade))
+        data.insert(0, '排名', data.index + 1)
+        data.insert(1, '評級', data['綜合分數'].apply(score_to_grade))
         data = data.drop(columns=['綜合分數'])
             
         if data_mode == "一般賽季分析":
