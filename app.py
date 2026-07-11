@@ -387,7 +387,6 @@ if not full_data.empty:
             with tab_rank:
                 st.markdown("### 🏆 全聯盟大數據洗牌與排名")
                 
-                # 提示目前的外號過濾狀態
                 if target_nickname:
                     st.success(f"🎭 **外號同好會啟動**：目前列表只顯示被 AI 判定為【{target_nickname}】的同類球員！")
                     
@@ -401,7 +400,6 @@ if not full_data.empty:
                 sorted_data = data.sort_values(by=sort_metric, ascending=(sort_order == "由低到高")).reset_index(drop=True)
                 sorted_data['同池排名'] = sorted_data.index + 1
                 
-                # 🚀 顯示邏輯修改：只有在「側欄選擇外號篩選」時，才保留 Nickname 欄位
                 cols_order = list(sorted_data.columns)
                 if 'Nickname' in cols_order:
                     if target_nickname:
@@ -431,7 +429,6 @@ if not full_data.empty:
                         else: recent_df = recent_df[recent_df['IP_calc'] >= recent_min_filter].copy().drop(columns=['IP_calc'])
                             
                     if not recent_df.empty:
-                        # 🔥 完美連動：如果選擇了外號，近況榜也會自動過濾只留下該外號的球員
                         if target_nickname:
                             recent_df = recent_df[recent_df['Player'].isin(full_data['Player'])].reset_index(drop=True)
                             
@@ -449,7 +446,6 @@ if not full_data.empty:
                                 recent_df = recent_df.sort_values(by=sel_recent_m, ascending=False if p_type == '打者' else (True if sel_recent_m in ['ERA', 'WHIP', 'BB'] else False)).reset_index(drop=True)
                                 recent_df.index += 1
                                 
-                                # 顯示邏輯：僅在選擇外號過濾時加入 Nickname 欄位
                                 cols_r = list(recent_df.columns)
                                 if 'Position' in cols_r: cols_r.remove('Position')
                                 if 'Nickname' in cols_r: cols_r.remove('Nickname')
@@ -519,7 +515,6 @@ if not full_data.empty:
                 x_col = col_sx.selectbox("X 軸", plot_metrics, index=plot_metrics.index('WAR') if 'WAR' in plot_metrics else 0, key="league_scatter_x")
                 y_col = col_sy.selectbox("Y 軸", plot_metrics, index=plot_metrics.index('wRC+') if 'wRC+' in plot_metrics else (plot_metrics.index('Barrel%') if 'Barrel%' in plot_metrics else 1), key="league_scatter_y")
                 
-                # 散佈圖維持彩蛋，滑鼠停留在星星上時顯示專屬外號
                 fig = px.scatter(data, x=x_col, y=y_col, color="Team", hover_name="Player", hover_data=["Nickname"], color_discrete_map={t: get_team_color(t)[0] for t in data['Team'].unique()})
                 for trace in fig.data: trace.showlegend = False
                 
@@ -676,7 +671,7 @@ if not full_data.empty:
                                     <span style="color: #333; font-weight: bold; font-size: {f_size(st.session_state.font_size, 0.95)}; text-align: center; flex: 1;">{label}</span>
                                     <span style="color: {h_text_color}; font-weight: {h_weight}; font-size: {h_size}; transition: all 0.3s;">{h_str}{h_icon}</span>
                                 </div>
-                                <div style="display: flex; height: 14px; border-radius: 7px; overflow: background-color: #f5f5f5;">
+                                <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background-color: #f5f5f5;">
                                     <div style="width: {a_pct}%; background-color: {a_bar_color}; transition: all 0.5s;"></div>
                                     <div style="width: {h_pct}%; background-color: {h_bar_color}; transition: all 0.5s;"></div>
                                 </div>
@@ -734,7 +729,6 @@ if not full_data.empty:
                             if not hit_stats.empty: st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.5)}; font-weight:bold; margin-top:10px; margin-bottom:10px;'>**打線本季表現**</div><div class='table-scroll-container'>{hit_stats.drop(columns=['Player_ID']).style.format(STYLER_FORMATS).hide(axis='index').to_html()}</div>", unsafe_allow_html=True)
                             if title.startswith("⚔️ 上半局"): st.divider()
 
-            # 🔥 MVP 排行榜：完美套用全域視覺上色與紅字標示
             with tab_mvp:
                 st.subheader(f"👑 {year} 賽季 MVP 預測排行榜")
                 col_mvp1, _ = st.columns([1, 2])
@@ -743,7 +737,6 @@ if not full_data.empty:
                 with st.spinner("運算 MVP 積分中..."):
                     mvp_df = data.copy()
                     if not mvp_df.empty:
-                        # 依據選擇過濾球隊
                         if sel_league_mvp == "美國聯盟 (AL)":
                             mvp_df = mvp_df[mvp_df['Team'].isin(AL_TEAMS)]
                         elif sel_league_mvp == "國家聯盟 (NL)":
@@ -756,7 +749,6 @@ if not full_data.empty:
                             mvp_df['MVP_Index'] = (mvp_df['WAR'] * 25 + mvp_df['K%'] * 1.5 - mvp_df['ERA'] * 10).round(1)
                             keep_cols = ['Player', 'Team', 'Position', 'WAR', 'ERA', 'WHIP', 'K%', 'MVP_Index']
                         
-                        # 顯示邏輯：僅在側欄選擇外號過濾時加入 Nickname
                         if target_nickname:
                             keep_cols.insert(3, 'Nickname')
                         else:
@@ -774,7 +766,6 @@ if not full_data.empty:
                             
                         st.markdown(f"<div class='table-scroll-container'>{styled_mvp.to_html()}</div>", unsafe_allow_html=True)
             
-            # 🔥 賽揚獎排行榜：完美套用全域視覺上色與紅字標示
             if p_type == "投手" and tab_cy is not None:
                 with tab_cy:
                     st.subheader(f"🏆 {year} 賽季 賽揚獎 (Cy Young) 預測排行榜")
@@ -784,7 +775,6 @@ if not full_data.empty:
                     with st.spinner("運算賽揚積分中..."):
                         cy_df = data.copy()
                         if not cy_df.empty:
-                            # 依據選擇過濾球隊
                             if sel_league_cy == "美國聯盟 (AL)":
                                 cy_df = cy_df[cy_df['Team'].isin(AL_TEAMS)]
                             elif sel_league_cy == "國家聯盟 (NL)":
@@ -793,7 +783,6 @@ if not full_data.empty:
                             cy_df['Cy_Index'] = (cy_df['WAR'] * 15 + cy_df['K%'] * 1.2 - cy_df['ERA'] * 8 - cy_df['WHIP'] * 10).round(1)
                             keep_cols_cy = ['Player', 'Team', 'Position', 'WAR', 'ERA', 'WHIP', 'K%', 'IP', 'Cy_Index']
                             
-                            # 顯示邏輯：僅在側欄選擇外號過濾時加入 Nickname
                             if target_nickname:
                                 keep_cols_cy.insert(3, 'Nickname')
                             else:
@@ -845,7 +834,6 @@ if not full_data.empty:
                 with st.spinner("掃描近七日全聯盟逐場日誌，精算 Fantasy 積分中..."):
                     weekly_df = fetch_weekly_fantasy_ranking(p_type)
                     if not weekly_df.empty:
-                        # 🔥 完美連動：在 Fantasy 近七日戰情室中，依然支援外號篩選！
                         if target_nickname:
                             weekly_df = weekly_df[weekly_df['Player'].isin(full_data['Player'])].reset_index(drop=True)
                             
@@ -863,7 +851,6 @@ if not full_data.empty:
                             weekly_df = weekly_df.sort_values(by=sort_week_metric, ascending=(sort_week_order == "由低到高")).reset_index(drop=True)
                             weekly_df.index += 1
                             
-                            # 顯示邏輯：僅在側欄選擇外號過濾時加入 Nickname
                             cols_w = list(weekly_df.columns)
                             if 'Position' in cols_w: cols_w.remove('Position')
                             if 'Nickname' in cols_w: cols_w.remove('Nickname')
@@ -887,23 +874,22 @@ if not full_data.empty:
                 st.caption("完整提取夢幻棒球常用的累積計分項目！")
                 fantasy_cols = ['Player', 'Team', 'Position', 'Fantasy_Score', 'R', 'H', '1B', '2B', '3B', 'HR', 'RBI', 'SB', 'BB', 'HBP', 'K', 'E', 'CYC', 'SLAM'] if p_type == '打者' else ['Player', 'Team', 'Position', 'Fantasy_Score', 'W', 'L', 'SHO', 'SV', 'OUT', 'H', 'ER', 'HR', 'BB', 'HBP', 'K', 'WP', 'HLD', 'QS', 'BSV']
                 
-                # 顯示邏輯：僅在側欄選擇外號過濾時加入 Nickname
                 if target_nickname:
                     fantasy_cols.insert(3, 'Nickname')
                     
                 fantasy_df = data[fantasy_cols].copy()
                 
                 col_f1, col_f2 = st.columns([1, 1])
-                # 修正 sort_f_metric 索引以避免抓到 Name 或 Position
-                sort_col_start = 4 if target_nickname else 3
-                sort_f_metric = col_f1.selectbox("📊 選擇排序指標 (Season Fantasy)", fantasy_cols[sort_col_start:], index=0, key='league_fan_season_metric')
-                sel_fantasy_pos = col_f2.selectbox("🛡️ 篩選守備位置 (Season Fantasy)", ["全部 (ALL)", "DH", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"] if p_type == '打者' else ["全部 (ALL)", "SP", "RP", "CL"], index=0, key='league_fan_season_pos')
+                # 🚀 根據需求：拿掉繁雜的各項數據篩選，只用 Fantasy_Score 進行排序
+                sel_fantasy_pos = col_f1.selectbox("🛡️ 篩選守備位置 (Season Fantasy)", ["全部 (ALL)", "DH", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"] if p_type == '打者' else ["全部 (ALL)", "SP", "RP", "CL"], index=0, key='league_fan_season_pos')
+                sort_f_order = col_f2.radio("排序方式", ["由高到低", "由低到高"], index=0, horizontal=True, key="league_fan_season_order")
                 
                 if sel_fantasy_pos != "全部 (ALL)": 
                     fantasy_df = fantasy_df[fantasy_df['Position'].astype(str).apply(lambda x: sel_fantasy_pos in [p.strip() for p in x.split(',')])]
-                if sort_f_metric not in ['CYC', 'SLAM']: 
-                    fantasy_df = fantasy_df.sort_values(by=sort_f_metric, ascending=True if sort_f_metric in ['L', 'E', 'ER', 'H', 'BB', 'BSV', 'WP'] else False).reset_index(drop=True)
-                    
+                
+                # 強制鎖定使用 Fantasy_Score 來排序
+                fantasy_df = fantasy_df.sort_values(by='Fantasy_Score', ascending=(sort_f_order == "由低到高")).reset_index(drop=True)
+                
                 if not fantasy_df.empty:
                     fantasy_df.index += 1
                     styled_fan = fantasy_df.style.apply(lambda row: [f'color: black !important; font-weight: 900 !important; font-size: 1.1em;' if col == 'Fantasy_Score' else (f'color: {get_team_color(row["Team"])[0]} !important; font-weight: 900 !important;' if col in ['Player', 'Team', 'Position', 'Nickname'] else '') for col in row.index], axis=1).format(STYLER_FORMATS).hide(axis='index')
