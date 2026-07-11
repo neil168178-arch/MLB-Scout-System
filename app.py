@@ -25,6 +25,10 @@ from data_fetcher import (
     fetch_team_recent_form
 )
 
+# 🔥 定義美聯 (AL) 與國聯 (NL) 球隊清單，用於獎項預測分流
+AL_TEAMS = ["New York Yankees", "Boston Red Sox", "Houston Astros", "Toronto Blue Jays", "Baltimore Orioles", "Tampa Bay Rays", "Chicago White Sox", "Cleveland Guardians", "Detroit Tigers", "Kansas City Royals", "Minnesota Twins", "Los Angeles Angels", "Oakland Athletics", "Seattle Mariners", "Texas Rangers"]
+NL_TEAMS = ["Los Angeles Dodgers", "Atlanta Braves", "Philadelphia Phillies", "New York Mets", "Chicago Cubs", "Cincinnati Reds", "Miami Marlins", "Washington Nationals", "Arizona Diamondbacks", "Colorado Rockies", "San Diego Padres", "San Francisco Giants", "Milwaukee Brewers", "St. Louis Cardinals", "Pittsburgh Pirates"]
+
 # 🌟 必須是第一個 Streamlit 指令
 st.set_page_config(layout="wide", page_title="MLB 終極球探系統")
 
@@ -46,12 +50,11 @@ with st.sidebar:
     data_mode = st.radio("數據分析模式", ["一般賽季分析", "Fantasy 夢幻棒球"], key="main_data_mode")
     min_filter = st.number_input("設定本季 PA (打席) 下限", min_value=0, value=30, step=10, key="main_min_filter_h") if p_type == "打者" else st.number_input("設定本季 IP (投球局數) 下限", min_value=0.0, value=10.0, step=5.0, key="main_min_filter_p")
     
-    # 撈取整併大聯盟、Savant 的賽季數據 (原始全資料)
+    # 撈取整併大聯盟、Savant 的賽季數據
     raw_data = process_combined_data(p_type, year, min_filter).copy()
     target_nickname = None
     
     if not raw_data.empty:
-        # 🔥 升級計畫第二步：動態生成全聯盟外號，並加入欄位
         raw_data['Nickname'] = raw_data.apply(lambda row: generate_fun_nickname(row, p_type), axis=1)
         
         all_players = sorted(raw_data['Player'].unique().tolist())
@@ -62,7 +65,6 @@ with st.sidebar:
         target_profile = st.selectbox("🔍 搜尋球員 (進入個人專屬面版)", options=all_players, index=None, placeholder="點選或輸入名字，按右側 ✕ 返回主頁", key="main_search_player")
         target_team = st.selectbox("🏟️ 選擇球隊 (進入球隊專屬面版)", options=all_teams, index=None, placeholder="選擇球隊，按右側 ✕ 返回主頁", key="main_search_team")
         
-        # 🔥 升級計畫第二步：外號篩選器
         target_nickname = st.selectbox("🎭 依專屬外號篩選 (同類球員大集合)", options=all_nicknames, index=None, placeholder="選擇外號，列出所有同類型的球員", key="main_search_nickname")
         
         # 判斷當前介面模式與資料流
@@ -76,7 +78,6 @@ with st.sidebar:
             theme_team = target_team
         elif target_nickname:
             mode = 'league'
-            # 🚀 篩選全聯盟數據，只保留被判定為該外號的球員！
             full_data = raw_data[raw_data['Nickname'] == target_nickname].copy()
             theme_team = "Los Angeles Dodgers" 
         else:
@@ -133,8 +134,6 @@ if not full_data.empty:
         p_prof = full_data[full_data['Player'] == target_profile].iloc[0]
         logo_url = get_team_logo_url(p_prof['Team'])
         hand_info = fetch_player_handedness(p_prof['Player_ID'])
-        
-        # 由於已在 full_data 運算，直接提取外號
         fun_nickname = p_prof['Nickname']
         
         logo_html = f"<img src='{logo_url}' width='45' style='vertical-align: middle; margin-right: 12px;'>" if logo_url else ""
@@ -362,7 +361,6 @@ if not full_data.empty:
 # 📌 模式 C：全聯盟綜合分析主頁
 # ==========================================
     else:
-        # data 現在已經是經過「外號過濾器」篩選過後的版本了！
         data = full_data.copy()
         
         scout_metrics_l = [m for m in global_metrics if m not in ['CYC', 'SLAM', 'E']]
@@ -381,8 +379,6 @@ if not full_data.empty:
 
             with tab_rank:
                 st.markdown("### 🏆 全聯盟大數據洗牌與排名")
-                
-                # 提示目前的外號過濾狀態
                 if target_nickname:
                     st.success(f"🎭 **外號同好會啟動**：目前列表只顯示被 AI 判定為【{target_nickname}】的同類球員！")
                     
@@ -396,7 +392,6 @@ if not full_data.empty:
                 sorted_data = data.sort_values(by=sort_metric, ascending=(sort_order == "由低到高")).reset_index(drop=True)
                 sorted_data['同池排名'] = sorted_data.index + 1
                 
-                # 🚀 把 Nickname 欄位插入到 Position 後面顯示
                 cols_order = list(sorted_data.columns)
                 if 'Nickname' in cols_order:
                     cols_order.remove('Nickname')
@@ -427,7 +422,6 @@ if not full_data.empty:
                         else: recent_df = recent_df[recent_df['IP_calc'] >= recent_min_filter].copy().drop(columns=['IP_calc'])
                             
                     if not recent_df.empty:
-                        # 🔥 完美連動：如果選擇了外號，近況榜也會自動過濾只留下該外號的球員
                         if target_nickname:
                             recent_df = recent_df[recent_df['Player'].isin(full_data['Player'])].reset_index(drop=True)
                             
@@ -500,7 +494,6 @@ if not full_data.empty:
                 x_col = col_sx.selectbox("X 軸", plot_metrics, index=plot_metrics.index('WAR') if 'WAR' in plot_metrics else 0, key="league_scatter_x")
                 y_col = col_sy.selectbox("Y 軸", plot_metrics, index=plot_metrics.index('wRC+') if 'wRC+' in plot_metrics else (plot_metrics.index('Barrel%') if 'Barrel%' in plot_metrics else 1), key="league_scatter_y")
                 
-                # 🚀 散佈圖彩蛋：滑鼠停留在星星上時顯示專屬外號！
                 fig = px.scatter(data, x=x_col, y=y_col, color="Team", hover_name="Player", hover_data=["Nickname"], color_discrete_map={t: get_team_color(t)[0] for t in data['Team'].unique()})
                 for trace in fig.data: trace.showlegend = False
                 
@@ -715,27 +708,48 @@ if not full_data.empty:
                             if not hit_stats.empty: st.markdown(f"<div style='font-size:{f_size(st.session_state.font_size, 1.5)}; font-weight:bold; margin-top:10px; margin-bottom:10px;'>**打線本季表現**</div><div class='table-scroll-container'>{hit_stats.drop(columns=['Player_ID']).style.format(STYLER_FORMATS).hide(axis='index').to_html()}</div>", unsafe_allow_html=True)
                             if title.startswith("⚔️ 上半局"): st.divider()
 
+            # 🔥 升級計畫第三步：MVP 增加「美聯 / 國聯」切換按鈕
             with tab_mvp:
                 st.subheader(f"👑 {year} 賽季 MVP 預測排行榜")
+                col_mvp1, _ = st.columns([1, 2])
+                sel_league_mvp = col_mvp1.radio("選擇聯盟", ["全大聯盟 (MLB)", "美國聯盟 (AL)", "國家聯盟 (NL)"], horizontal=True, key="league_mvp")
+                
                 with st.spinner("運算 MVP 積分中..."):
                     mvp_df = data.copy()
                     if not mvp_df.empty:
+                        # 依據選擇過濾球隊
+                        if sel_league_mvp == "美國聯盟 (AL)":
+                            mvp_df = mvp_df[mvp_df['Team'].isin(AL_TEAMS)]
+                        elif sel_league_mvp == "國家聯盟 (NL)":
+                            mvp_df = mvp_df[mvp_df['Team'].isin(NL_TEAMS)]
+                            
                         if p_type == '打者':
                             mvp_df['MVP_Index'] = (mvp_df['WAR'] * 20 + mvp_df['OPS'] * 50 + mvp_df['wRC+'] * 0.5).round(1)
                             keep_cols = ['Player', 'Team', 'Position', 'Nickname', 'WAR', 'OPS', 'wRC+', 'HR', 'MVP_Index']
                         else:
                             mvp_df['MVP_Index'] = (mvp_df['WAR'] * 25 + mvp_df['K%'] * 1.5 - mvp_df['ERA'] * 10).round(1)
                             keep_cols = ['Player', 'Team', 'Position', 'Nickname', 'WAR', 'ERA', 'WHIP', 'K%', 'MVP_Index']
+                        
                         mvp_top = mvp_df.sort_values('MVP_Index', ascending=False).head(15).reset_index(drop=True)
                         mvp_top.index += 1
                         st.markdown(f"<div class='table-scroll-container'>{mvp_top[keep_cols].style.format(STYLER_FORMATS).background_gradient(subset=['MVP_Index'], cmap='YlOrRd').to_html()}</div>", unsafe_allow_html=True)
             
+            # 🔥 升級計畫第三步：賽揚獎 增加「美聯 / 國聯」切換按鈕
             if p_type == "投手" and tab_cy is not None:
                 with tab_cy:
                     st.subheader(f"🏆 {year} 賽季 賽揚獎 (Cy Young) 預測排行榜")
+                    col_cy1, _ = st.columns([1, 2])
+                    sel_league_cy = col_cy1.radio("選擇聯盟", ["全大聯盟 (MLB)", "美國聯盟 (AL)", "國家聯盟 (NL)"], horizontal=True, key="league_cy")
+                    
                     with st.spinner("運算賽揚積分中..."):
                         cy_df = data.copy()
                         if not cy_df.empty:
+                            # 依據選擇過濾球隊
+                            if sel_league_cy == "美國聯盟 (AL)":
+                                cy_df = cy_df[cy_df['Team'].isin(AL_TEAMS)]
+                            elif sel_league_cy == "國家聯盟 (NL)":
+                                cy_df = cy_df[cy_df['Team'].isin(NL_TEAMS)]
+                                
                             cy_df['Cy_Index'] = (cy_df['WAR'] * 15 + cy_df['K%'] * 1.2 - cy_df['ERA'] * 8 - cy_df['WHIP'] * 10).round(1)
                             cy_top = cy_df.sort_values('Cy_Index', ascending=False).head(15).reset_index(drop=True)
                             cy_top.index += 1
