@@ -1,39 +1,27 @@
-# ⚾ MLB 終極球探與 Fantasy 數據預測系統
+# ⚾ MLB 終極球探與數據預測系統 (MLB Ultimate Scouting & Prediction System)
 
-這是一個基於 **Python** 與 **Streamlit** 開發的大聯盟棒球綜合數據分析平台。經過全面重構與模組化，本系統整合了傳統數據、Statcast 進階擊球數據，並內建了 **雙引擎賽程勝率預測** 與 **全自訂 Fantasy 營運後台**，為球迷與夢幻棒球玩家提供企業級的戰情室。
+這是一個基於 **Python** 與 **Streamlit** 開發的大聯盟棒球綜合數據分析平台。系統整合了傳統數據、Statcast 進階擊球數據，並內建了 **機器學習預測引擎 (Machine Learning)** 與 **非同步爬蟲架構 (Asyncio)**，為球迷、Fantasy Baseball 玩家及數據分析師提供全方位的戰情室。
 
-## ✨ 核心四大系統 (Core Modules)
+## ✨ 核心亮點功能 (Key Features)
 
-1. 📊 **全聯盟一般數據**
-   - 結合 Pandas 與 Plotly，提供全聯盟打者/投手的進階排行榜、散佈圖與五角雷達圖對比。
-   - 內建 MVP 與賽揚獎 (Cy Young) 預測指標演算。
+* **🚀 非同步高速爬蟲架構**：整合 `aiohttp` 與 `asyncio`，併發獲取大聯盟 API 與 10 年歷史守備資料，解決 N+1 查詢瓶頸，實現光速載入。
+* **🧠 AI 機器學習勝率預測**：導入 `scikit-learn` 隨機森林 (Random Forest) 模型。綜合兩隊打線 OPS、先發 ERA、牛棚疲勞度與近期動能，產出科學化的賽事勝率預測與特徵重要性 (Feature Importance) 分析。
+* **🦄 Fantasy Baseball 深度結算**：內建 Fantasy 積分演算法，支援查看全賽季累積積分，並可精確抓取「近 7 天」的單場進階成就（如完全打擊 CYC、滿貫砲 SLAM、優質先發 QS）。
+* **🏥 組織級傷兵名單追蹤**：雙管齊下掃描大聯盟與小聯盟 (MiLB) 的 40 人名單與 Full Roster，結合精準的中文翻譯字典，不漏接任何一位隱藏傷兵的真實病歷。
+* **📊 全方位資料視覺化**：結合 `pybaseball` 獲取 Savant 擊球初速 (EV)、Barrel%、wRC+ 等進階數據，並使用 `Plotly` 繪製雷達圖、散佈圖與生涯數據走勢。
 
-2. 🦄 **Fantasy 夢幻棒球總管**
-   - **全幅沉浸式陣容管理**：支援 H2H (Head-to-Head) 每週積分精算與先發/板凳/傷兵調度。
-   - **極致自訂計分引擎**：支援完全客製化 Yahoo/ESPN 的計分權重（如 TB, K/9, QS 等近 40 項指標）。
-   - **自由市場 (FA) 雙星對決**：精算未來 7/14 天的賽程優勢，並預測球員的產出分數。
+## 🛠️ 技術棧 (Tech Stack)
 
-3. 🔮 **賽程與勝率預測中心**
-   - 拋棄黑箱機器學習模型，採用完全透明的「五大指標戰力解析器」。
-   - 結合 **先發 ERA、牛棚疲勞、打線 OPS 與連勝動能**，精準推算每日賽程勝率與優劣勢解析。
+* **前端框架**: Streamlit
+* **資料處理**: Pandas, NumPy
+* **非同步網路請求**: Requests, aiohttp, asyncio
+* **視覺化圖表**: Plotly (Express, Graph Objects)
+* **機器學習**: Scikit-Learn (RandomForestClassifier)
+* **棒球進階數據**: Pybaseball (Statcast)
 
-4. 🔍 **深度分析面板**
-   - 專屬的單一球員/球隊戰情室。無縫支援大谷翔平的**二刀流防呆切換**。
-   - 包含 Savant 左右投打對位 (Platoon Splits)、主客場差異與生涯趨勢折線圖。
+## 🚀 如何在本地端運行 (How to Run Locally)
 
-## 🚀 系統架構與技術棧
-
-* **前端框架**: Streamlit (支援響應式 CSS 與滿版 UI)
-* **資料處理**: Pandas, Numpy
-* **視覺化圖表**: Plotly Express, Plotly Graph Objects
-* **異步爬蟲技術**: `aiohttp`, `asyncio` (解決大聯盟 API N+1 查詢瓶頸)
-* **本地微型資料庫**: JSON (用於儲存 Fantasy 聯盟設定與每日陣容記憶)
-
-## 🛠️ 如何啟動 (Installation & Run)
-
-```bash
-# 1. 安裝所需套件 (極輕量，無需機器學習龐大函式庫)
-pip install -r requirements.txt
-
-# 2. 啟動系統
-streamlit run app.py
+1. **複製此專案 (Clone the repository)**
+   ```bash
+   git clone [https://github.com/你的GitHub帳號/MLB_Scout_System.git](https://github.com/neil168178-arch/MLB_Scout_System.git)
+   cd MLB_Scout_System
